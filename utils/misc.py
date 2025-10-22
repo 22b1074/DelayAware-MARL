@@ -4,6 +4,9 @@ import torch.nn.functional as F
 import torch.distributed as dist
 from torch.autograd import Variable
 import numpy as np
+USE_CUDA = False
+device = 'cuda' if USE_CUDA else 'cpu'
+
 
 # https://github.com/ikostrikov/pytorch-ddpg-naf/blob/master/ddpg.py#L11
 def soft_update(target, source, tau):
@@ -65,7 +68,7 @@ def onehot_from_logits(logits, eps=0.0):
 def sample_gumbel(shape, eps=1e-20, tens_type=torch.FloatTensor):
     """Sample from Gumbel(0, 1)"""
     U = Variable(tens_type(*shape).uniform_(), requires_grad=False)
-    return -torch.log(-torch.log(U + eps) + eps).to('cuda')
+    return -torch.log(-torch.log(U + eps) + eps).to(device)
 
 # modified for PyTorch from https://github.com/ericjang/gumbel-softmax/blob/master/Categorical%20VAE.ipynb
 def gumbel_softmax_sample(logits, temperature):

@@ -12,19 +12,16 @@ from utils.buffer import ReplayBuffer
 from utils.env_wrappers import SubprocVecEnv, DummyVecEnv
 from algorithms.maddpg import MADDPG
 
-USE_CUDA = True  # torch.cuda.is_available()
+USE_CUDA = False  # torch.cuda.is_available()
 
-import os
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 
 def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
     def get_env_fn(rank):
         def init_env():
-            # Create env without seed
             env = make_env(env_id, discrete_action=discrete_action)
-            # Set numpy seed for reproducibility
             np.random.seed(seed + rank * 1000)
-            # Apply seed via reset
             env.reset(seed=seed + rank * 1000)
             return env
         return init_env
@@ -47,6 +44,7 @@ def run(config):
             curr_run = 'run1'
         else:
             curr_run = 'run%i' % (max(exst_run_nums) + 1)
+
     run_dir = model_dir / curr_run
     log_dir = run_dir / 'logs'
     os.makedirs(log_dir)
@@ -56,84 +54,115 @@ def run(config):
     np.random.seed(config.seed)
     if not USE_CUDA:
         torch.set_num_threads(config.n_training_threads)
+
     env = make_parallel_env(config.env_id, config.n_rollout_threads, config.seed,
                             config.discrete_action)
-    # Get single env to access agent spaces
-    single_env = env.envs[0]
-    agents = single_env.agents
-    n_agents = len(agents)
+
+    maddpg = MADDPG.init_from_env_with_delay(env,
+                                             agent_alg=config.agent_alg,
+                                             adversary_alg=config.adversary_alg,
+                                             tau=config.tau,
+                                             lr=config.lr,
+                                             hidden_dim=config.hidden_dim,
+                                             delay_step=1)
     
-    # Get observation and action spaces
-    observation_spaces = [single_env.observation_space(a) for a in agents]
-    action_spaces = [single_env.action_space(a) for a in agents]
-    maddpg = MADDPG.init_from_env_with_delay(env, agent_alg=config.agent_alg,
-                                  adversary_alg=config.adversary_alg,
-                                  tau=config.tau,
-                                  lr=config.lr,
-                                  hidden_dim=config.hidden_dim,
-                                  delay_step = 1)
     delay_step = 1
-    replay_buffer = ReplayBuffer(config.buffer_length, maddpg.nagents,
-                                 [obsp.shape[0] + delay_step*2 for obsp in observation_spaces],
-                                 [acsp.shape[0] if isinstance(acsp, Box) else acsp.shape[0]
-                                  for acsp in action_spaces])
+    print(f"env: {dir(env)}")
+    base_env = env.envs[0]
+    #print(f"ENVS:{dir(env.envs)}")
+    agents = base_env.agents
+    nagents = len(agents)
+    print(f"Agents: {agents}, nagents: {nagents}")
+    print(f"base_env: {base_env}")
+    print("[DEBUG] Base env agents:", base_env.agents)
+    for agent in base_env.agents:
+        print(f"  {agent} obs_space:", base_env.observation_space(agent))
+        print(f"  {agent} act_space:", base_env.action_space(agent))
+    print("[DEBUG] delay_step:", delay_step)
+
+
+    # ✅ Fixed action-space shape check (no AttributeError now)
+    replay_buffer = ReplayBuffer(config.buffer_length,
+                                 maddpg.nagents,
+                                 [
+                                    base_env.observation_space(agent).shape[0] + delay_step * 2
+                                    for agent in base_env.agents
+                                ],
+                                [
+    base_env.action_space(agent).n if hasattr(base_env.action_space(agent), 'n')
+    else int(np.prod(base_env.action_space(agent).shape))
+    for agent in base_env.agents
+]
+
+                                )
+
     t = 0
     for ep_i in range(0, config.n_episodes, config.n_rollout_threads):
         print("Episodes %i-%i of %i" % (ep_i + 1,
                                         ep_i + 1 + config.n_rollout_threads,
                                         config.n_episodes))
         obs = env.reset()
-        single_env = env.envs[0]
-        agents = single_env.agents
-        n_agents = len(agents)
-
-        # Convert dict obs to list of observations per agent
-        if isinstance(obs, dict):
-            obs_list = [obs[a] for a in agents]  # list of 1D np arrays
-            obs = np.array([obs_list])  # shape (1, n_agents, obs_dim)
-
-        elif obs is None:
-            # fallback: sample from observation spaces
-            obs = [[single_env.observation_space(a).sample() for a in agents]]
-        # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
+        print(f"[DEBUG] Raw OBS from env.reset(): {obs}")
         maddpg.prep_rollouts(device='cpu')
 
         explr_pct_remaining = max(0, config.n_exploration_eps - ep_i) / config.n_exploration_eps
         maddpg.scale_noise(config.final_noise_scale + (config.init_noise_scale - config.final_noise_scale) * explr_pct_remaining)
         maddpg.reset_noise()
 
-        #zero_agent_actions = [np.array([0.0, 0.0]) for _ in range(maddpg.nagents)]
-        #last_agent_actions = [zero_agent_actions for _ in range(delay_step)]
-        # Initialize delay action buffers
-        zero_agent_actions = []
-        for i in range(n_agents):
-            shape = observation_spaces[i].shape
-            # handle zero-dim shape (scalar) by forcing 1D length 1 array
-            if len(shape) == 0:
-                zero_agent_actions.append(np.zeros(1))
-            else:
-                zero_agent_actions.append(np.zeros(shape))
+        base_env = env.envs[0]  # first env in the vector
+        agents = base_env.agents
+        nagents = len(agents)
 
-        last_agent_actions = [zero_agent_actions.copy() for _ in range(delay_step)]
+        zero_agent_actions = [
+            np.zeros(
+                base_env.action_space(agent).n 
+                if isinstance(base_env.action_space(agent), Discrete)
+                else int(np.prod(base_env.action_space(agent).shape))
+            )
+            for agent in agents
+            ]
+        last_agent_actions = [zero_agent_actions for _ in range(delay_step)]
 
-        #for a_i, agent_obs in enumerate(obs[0]):
-         #   for _ in range(len(last_agent_actions)):
-          #      obs[0][a_i] = np.append(agent_obs, last_agent_actions[_][a_i])
-        for agent_idx in range(n_agents):
-            for past_actions in last_agent_actions:
-                obs_array = np.atleast_1d(obs[0][agent_idx])
-                past_action_array = np.atleast_1d(past_actions[agent_idx])
-                obs[0][agent_idx] = np.concatenate([obs_array, past_action_array])
+        
 
-                
+        # obs: list of shape (n_rollout_threads, nagents), each obs[t][a_i] is np.ndarray
+        for t in range(config.n_rollout_threads):
+            for a_i in range(maddpg.nagents):
+                # If obs is empty dict (agent not active yet), replace with zeros
+                if isinstance(obs[t][a_i], dict):
+                    obs[t][a_i] = np.zeros(base_env.observation_space(base_env.agents[a_i]).shape[0], dtype=np.float32)
+                else:
+                    obs[t][a_i] = obs[t][a_i].astype(np.float32)
+
+                # Append only this agent's delayed actions as one-hot
+                for d in range(delay_step):
+                    act = last_agent_actions[d][a_i]
+                    if maddpg.discrete_action:
+                        num_out_pol = maddpg.agent_init_params[a_i]['num_out_pol']
+                        one_hot_act = np.zeros(num_out_pol, dtype=np.float32)
+                        one_hot_act[int(act)] = 1.0
+                        obs[t][a_i] = np.append(obs[t][a_i], one_hot_act)
+                    else:
+                        obs[t][a_i] = np.append(obs[t][a_i], act.astype(np.float32))
+
+                print(f"Agent {a_i} obs shape after delay append: {obs[t][a_i].shape}")
+
+
+
+
+        print(f"[DEBUG] Flattened OBS ready for torch: {obs}")
+
+
+        print(f"[DEBUG] Flattened OBS before appending last_agent_actions: {obs}")
+
+       
+
+
         for et_i in range(config.episode_length):
-            for i in range(maddpg.nagents):
-                print(f"Shape obs at step {et_i} agent {i}: {obs[0][i].shape}, dtype: {obs[0][i].dtype}")
             torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
                                   requires_grad=False)
                          for i in range(maddpg.nagents)]
             torch_agent_actions = maddpg.step(torch_obs, explore=True)
-
             agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
 
             if delay_step == 0:
@@ -143,38 +172,40 @@ def run(config):
                 actions = last_agent_actions[0]
                 last_agent_actions = last_agent_actions[1:]
                 last_agent_actions.append(agent_actions_tmp)
+
             actions = [actions]
             next_obs, rewards, dones, infos = env.step(actions)
+
             for a_i, agent_obs in enumerate(next_obs[0]):
                 for _ in range(len(last_agent_actions)):
                     if a_i == 2:
-                        next_obs[0][a_i] = np.append(agent_obs, 4*last_agent_actions[_][a_i])
+                        next_obs[0][a_i] = np.append(agent_obs, 4 * last_agent_actions[_][a_i])
                     else:
-                        next_obs[0][a_i] = np.append(agent_obs, 3*last_agent_actions[_][a_i])
-            agent_actions[0] = agent_actions[0]*3
-            agent_actions[1] = agent_actions[1]*3
-            agent_actions[2] = agent_actions[1]*4
-            replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
-    
+                        next_obs[0][a_i] = np.append(agent_obs, 3 * last_agent_actions[_][a_i])
 
-            
+            agent_actions[0] = agent_actions[0] * 3
+            agent_actions[1] = agent_actions[1] * 3
+            agent_actions[2] = agent_actions[1] * 4
+
+            replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
+
             obs = next_obs
             t += config.n_rollout_threads
+
             if (len(replay_buffer) >= config.batch_size and
-                (t % config.steps_per_update) < config.n_rollout_threads):
+                    (t % config.steps_per_update) < config.n_rollout_threads):
                 if USE_CUDA:
                     maddpg.prep_training(device='gpu')
                 else:
                     maddpg.prep_training(device='cpu')
                 for u_i in range(config.n_rollout_threads):
-                    for a_i in range(maddpg.nagents - 1): #do not update the runner
-                        sample = replay_buffer.sample(config.batch_size,
-                                                      to_gpu=USE_CUDA)
+                    for a_i in range(maddpg.nagents - 1):  # do not update the runner
+                        sample = replay_buffer.sample(config.batch_size, to_gpu=USE_CUDA)
                         maddpg.update(sample, a_i, logger=logger)
                     maddpg.update_adversaries()
                 maddpg.prep_rollouts(device='cpu')
-        ep_rews = replay_buffer.get_average_rewards(
-            config.episode_length * config.n_rollout_threads)
+
+        ep_rews = replay_buffer.get_average_rewards(config.episode_length * config.n_rollout_threads)
         for a_i, a_ep_rew in enumerate(ep_rews):
             logger.add_scalars('agent%i/mean_episode_rewards' % a_i, {'reward': a_ep_rew}, ep_i)
 
@@ -192,22 +223,15 @@ def run(config):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("env_id", help="Name of environment")
-    parser.add_argument("model_name",
-                        help="Name of directory to store " +
-                             "model/training contents")
-#     parser.add_argument("run_num", default=1, type=int)
-    parser.add_argument("--seed",
-                        default=1, type=int,
-                        help="Random seed")
+    parser.add_argument("model_name", help="Name of directory to store model/training contents")
+    parser.add_argument("--seed", default=1, type=int, help="Random seed")
     parser.add_argument("--n_rollout_threads", default=1, type=int)
     parser.add_argument("--n_training_threads", default=6, type=int)
     parser.add_argument("--buffer_length", default=int(1e6), type=int)
     parser.add_argument("--n_episodes", default=25000, type=int)
     parser.add_argument("--episode_length", default=25, type=int)
     parser.add_argument("--steps_per_update", default=100, type=int)
-    parser.add_argument("--batch_size",
-                        default=1024, type=int,
-                        help="Batch size for model training")
+    parser.add_argument("--batch_size", default=1024, type=int, help="Batch size for model training")
     parser.add_argument("--n_exploration_eps", default=25000, type=int)
     parser.add_argument("--init_noise_scale", default=0.3, type=float)
     parser.add_argument("--final_noise_scale", default=0.0, type=float)
@@ -215,15 +239,9 @@ if __name__ == '__main__':
     parser.add_argument("--hidden_dim", default=64, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--tau", default=0.01, type=float)
-    parser.add_argument("--agent_alg",
-                        default="MADDPG", type=str,
-                        choices=['MADDPG', 'DDPG'])
-    parser.add_argument("--adversary_alg",
-                        default="MADDPG", type=str,
-                        choices=['MADDPG', 'DDPG'])
-    parser.add_argument("--discrete_action",
-                        action='store_true')
+    parser.add_argument("--agent_alg", default="MADDPG", type=str, choices=['MADDPG', 'DDPG'])
+    parser.add_argument("--adversary_alg", default="MADDPG", type=str, choices=['MADDPG', 'DDPG'])
+    parser.add_argument("--discrete_action", action='store_true')
 
     config = parser.parse_args()
-
     run(config)

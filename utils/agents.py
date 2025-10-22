@@ -5,7 +5,7 @@ from .networks import MLPNetwork
 from .misc import hard_update, gumbel_softmax, onehot_from_logits
 from .noise import OUNoise
 
-device = 'cuda'
+device = 'cpu'
 
 class DDPGAgent(object):
     """

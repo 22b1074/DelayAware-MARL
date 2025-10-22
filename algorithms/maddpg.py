@@ -40,14 +40,14 @@ class MADDPG(object):
         self.tau = tau
         self.lr = lr
         self.discrete_action = discrete_action
-        self.pol_dev = 'gpu'  # device for policies
-        self.critic_dev = 'gpu'  # device for critics
-        self.trgt_pol_dev = 'gpu'  # device for target policies
-        self.trgt_critic_dev = 'gpu'  # device for target critics
-        # self.pol_dev = 'cpu'  # device for policies
-        # self.critic_dev = 'cpu'  # device for critics
-        # self.trgt_pol_dev = 'cpu'  # device for target policies
-        # self.trgt_critic_dev = 'cpu'  # device for target critics
+        #self.pol_dev = 'gpu'  # device for policies
+        #self.critic_dev = 'gpu'  # device for critics
+        #self.trgt_pol_dev = 'gpu'  # device for target policies
+        #self.trgt_critic_dev = 'gpu'  # device for target critics
+        self.pol_dev = 'cpu'  # device for policies
+        self.critic_dev = 'cpu'  # device for critics
+        self.trgt_pol_dev = 'cpu'  # device for target policies
+        self.trgt_critic_dev = 'cpu'  # device for target critics
         self.niter = 0
 
     @property
@@ -297,22 +297,22 @@ class MADDPG(object):
         agents = single_env.agents  # list of agent names
         n_agents = len(agents)
 
-        alg_types = [agent_alg] * n_agents
-        #alg_types = [adversary_alg if atype == 'adversary' else agent_alg for
-             #atype in single_env.agent_types]
+        #alg_types = [agent_alg] * n_agents
+        alg_types = [adversary_alg if atype == 'adversary' else agent_alg for
+             atype in env.agent_types]
 
         action_spaces = [single_env.action_space(a) for a in agents]
         observation_spaces = [single_env.observation_space(a) for a in agents]
-
+        print()
 
         for acsp, obsp, algtype in zip(action_spaces, observation_spaces, alg_types):
             # Determine action type and output dimension
-            #if isinstance(acsp, Box):
-            discrete_action = False
-            num_out_pol = acsp.shape[0]  # Box: continuous action space
-            #else:  # Discrete
-             #   discrete_action = True
-              #  num_out_pol = acsp.n      # Discrete: number of actions
+            if isinstance(acsp, Box):
+                discrete_action = False
+                num_out_pol = acsp.shape[0]  # Box: continuous action space
+            else:  # Discrete
+                discrete_action = True
+                num_out_pol = acsp.n      # Discrete: number of actions
 
             # Policy input includes observation + delayed actions
             num_in_pol = obsp.shape[0] + delay_step * num_out_pol
@@ -328,8 +328,8 @@ class MADDPG(object):
                     if isinstance(oacsp, Box):
                         num_in_critic += oacsp.shape[0] + delay_step * oacsp.shape[0]
                     else:
-                        #num_in_critic += oacsp.n + delay_step * oacsp.n
-                        num_in_critic += oacsp.shape[0] + delay_step * oacsp.shape[0]
+                        num_in_critic += oacsp.n + delay_step * oacsp.n
+                        #num_in_critic += oacsp.shape[0] + delay_step * oacsp.shape[0]
             else:  # DDPG agent
                 num_in_critic = obsp.shape[0] + num_out_pol + delay_step * num_out_pol
 
@@ -339,6 +339,10 @@ class MADDPG(object):
                 'num_out_pol': num_out_pol,
                 'num_in_critic': num_in_critic
             })
+        print("\n[DEBUG] Agent Init Params:")
+        for i, p in enumerate(agent_init_params):
+            print(f"  Agent {i}: num_in_pol={p['num_in_pol']}, num_out_pol={p['num_out_pol']}, num_in_critic={p['num_in_critic']}")
+
 
 #         print(agent_init_params)
         init_dict = {'gamma': gamma, 'tau': tau, 'lr': lr,
