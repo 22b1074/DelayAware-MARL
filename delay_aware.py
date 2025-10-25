@@ -184,7 +184,7 @@ def run(config):
             }
             
             print(f"Env Step Input: {[actions_dict]}")
-            next_obs, rewards, dones, infos = env.step([actions_dict])
+            next_obs, rewards, dones, infos = env.step(actions_dict)
             print(f"Env Step Output: {next_obs, rewards, dones, infos}")
 
             for a_i, agent_obs in enumerate(next_obs[0]):
