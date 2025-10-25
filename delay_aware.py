@@ -12,7 +12,7 @@ from utils.buffer import ReplayBuffer
 from utils.env_wrappers import SubprocVecEnv, DummyVecEnv
 from algorithms.maddpg import MADDPG
 
-USE_CUDA = False  # torch.cuda.is_available()
+USE_CUDA = True  # torch.cuda.is_available()
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -174,7 +174,8 @@ def run(config):
                 last_agent_actions.append(agent_actions_tmp)
 
             actions = [actions]
-            next_obs, rewards, dones, infos = env.step(actions)
+            action_dict = {agent: act for agent, act in zip(agents, actions)}
+            obs, rewards, dones, infos = env.step(action_dict)
 
             for a_i, agent_obs in enumerate(next_obs[0]):
                 for _ in range(len(last_agent_actions)):
