@@ -179,7 +179,7 @@ def run(config):
             actions_dict = {agent_name: agent_action
                             for agent_name, agent_action in zip(base_env.agents, agent_actions_tmp)}
             
-            next_obs, rewards, dones, infos = env.step(actions_dict)
+            next_obs, rewards, dones, infos = env.step([actions_dict])
 
 
             for a_i, agent_obs in enumerate(next_obs[0]):
