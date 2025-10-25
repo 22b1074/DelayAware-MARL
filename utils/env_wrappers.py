@@ -124,15 +124,38 @@ class DummyVecEnv(VecEnv):
         self.actions = actions
 
     def step_wait(self):
-        results = [env.step(a) for (a,env) in zip(self.actions, self.envs)]
-        obs, rews, dones, infos = map(np.array, zip(*results))
-        self.ts += 1
-        for (i, done) in enumerate(dones):
-            if all(done): 
-                obs[i] = self.envs[i].reset()
-                self.ts[i] = 0
+        results = []
+        for a, env in zip(self.actions, self.envs):
+            # Step the environment
+            obs_dict, rew_dict, done_dict, info_dict = env.step(a)
+            
+            # Convert dicts to arrays in a consistent agent order
+            obs = np.array([obs_dict.get(agent, np.zeros(env.observation_space[agent].shape, dtype=np.float32))
+                            for agent in env.agents], dtype=np.float32)
+            rewards = np.array([rew_dict.get(agent, 0.0) for agent in env.agents], dtype=np.float32)
+            dones = np.array([done_dict.get(agent, False) for agent in env.agents], dtype=np.bool_)
+            infos = info_dict  # Keep infos as dict per env
+    
+            results.append((obs, rewards, dones, infos))
+        
+        # Debug: print shapes and first few entries
+        print("[DEBUG] Step results shapes:")
+        for i, (obs, rew, done, info) in enumerate(results):
+            print(f" Env {i}: obs {obs.shape}, rew {rew.shape}, dones {dones.shape}, infos keys {list(info.keys())}")
+        
+        # Stack results across environments
+        obs_batch, rew_batch, done_batch, infos_batch = map(np.array, zip(*results))
+    
+        # Reset environments if all agents are done
+        for i, done_env in enumerate(done_batch):
+            if all(done_env):
+                obs_batch[i] = self.envs[i].reset()
+                if hasattr(self, "ts"):
+                    self.ts[i] = 0
+    
         self.actions = None
-        return np.array(obs), np.array(rews), np.array(dones), infos
+        return obs_batch, rew_batch, done_batch, infos_batch
+
 
     def reset(self):        
         results = [env.reset() for env in self.envs]
