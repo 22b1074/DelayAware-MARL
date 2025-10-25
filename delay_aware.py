@@ -174,8 +174,13 @@ def run(config):
                 last_agent_actions.append(agent_actions_tmp)
 
             actions = [actions]
-            action_dict = {agent: act for agent, act in zip(agents, actions)}
-            obs, rewards, dones, infos = env.step(action_dict)
+            #action_dict = {agent: act for agent, act in zip(agents, actions)}
+           # obs, rewards, dones, infos = env.step(action_dict)
+            for agent in env.agent_iter():
+                obs, reward, done, info = env.last()
+                action = policy(obs)
+                env.step(action)
+
 
             for a_i, agent_obs in enumerate(next_obs[0]):
                 for _ in range(len(last_agent_actions)):
