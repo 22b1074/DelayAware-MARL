@@ -104,10 +104,15 @@ def run(config):
                                         ep_i + 1 + config.n_rollout_threads,
                                         config.n_episodes))
         obs_dict = env.reset()
-        agents = list(obs_dict.keys())
-        obs = np.array([obs_dict[a] for a in agents], dtype=object).reshape(1, -1)
-        print(f"[DEBUG] Normalized OBS array: {obs.shape}, {type(obs)}")
+        if isinstance(obs_dict, dict):
+            agents = list(obs_dict.keys())
+            obs = np.array([obs_dict[a] for a in agents], dtype=object).reshape(1, -1)
+        else:
+            # env is DummyVecEnv, so it's already an array
+            obs = obs_dict
+            agents = list(range(obs.shape[1])) if obs.ndim > 1 else [0]
 
+print(f"[DEBUG] Normalized OBS array: {obs.shape}")
         maddpg.prep_rollouts(device='cpu')
 
         explr_pct_remaining = max(0, config.n_exploration_eps - ep_i) / config.n_exploration_eps
