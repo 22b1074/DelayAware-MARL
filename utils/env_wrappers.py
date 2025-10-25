@@ -126,9 +126,11 @@ class DummyVecEnv(VecEnv):
     def step_wait(self):
         results = []
         for a, env in zip(self.actions, self.envs):
-            # For parallel_env: pass dict directly
-            obs_dict, rew_dict, done_dict, info_dict = env.step(a)
+            step_result = env.step(a)
+            if isinstance(step_result, (list, tuple)) and len(step_result) == 1:
+                step_result = step_result[0]
     
+            obs_dict, rew_dict, done_dict, info_dict = step_result
             obs = np.array([obs_dict[agent] for agent in env.agents], dtype=np.float32)
             rewards = np.array([rew_dict[agent] for agent in env.agents], dtype=np.float32)
             dones = np.array([done_dict[agent] for agent in env.agents], dtype=np.bool_)
@@ -138,6 +140,7 @@ class DummyVecEnv(VecEnv):
         obs_batch, rew_batch, done_batch, infos_batch = map(np.array, zip(*results))
         self.actions = None
         return obs_batch, rew_batch, done_batch, infos_batch
+
 
 
 
