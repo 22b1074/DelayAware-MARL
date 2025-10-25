@@ -106,7 +106,7 @@ def run(config):
         obs_dict = env.reset()
         agents = list(obs_dict.keys())
         obs = np.array([obs_dict[a] for a in agents], dtype=object).reshape(1, -1)
-        print(f"[DEBUG] Normalized OBS array: {obs.shape}")
+        print(f"[DEBUG] Normalized OBS array: {obs.shape}, {type(obs)}")
 
         maddpg.prep_rollouts(device='cpu')
 
