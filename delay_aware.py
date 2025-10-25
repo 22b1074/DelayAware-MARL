@@ -178,7 +178,7 @@ def run(config):
             # agent_names = base_env.agents
             actions_dict = {agent_name: agent_action
                             for agent_name, agent_action in zip(base_env.agents, agent_actions_tmp)}
-            print(env.step([actions_dict])
+            print(env.step([actions_dict]))
             next_obs, rewards, dones, infos = env.step([actions_dict])
 
 
