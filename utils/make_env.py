@@ -13,12 +13,12 @@ def make_env(scenario_name, discrete_action=False):
     if scenario_name not in scenario_dict:
         raise ValueError(f"Scenario {scenario_name} not found in MPE2 environments")
     
-    env = scenario_dict[scenario_name](
+    base_env = scenario_dict[scenario_name](
         max_cycles=25,
-        continuous_actions=not discrete_action
+        continuous_actions=True
     )
     # Pad observations so all agents have same observation shape
-    env = ss.pad_observations_v0(env)
+    env = ss.pad_observations_v0(base_env)
     # Optional: pad actions if needed
     env = ss.pad_action_space_v0(env)
     env = ss.pettingzoo_env_to_vec_env_v1(env)
