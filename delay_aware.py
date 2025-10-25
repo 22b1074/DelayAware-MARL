@@ -175,8 +175,12 @@ def run(config):
                 last_agent_actions = last_agent_actions[1:]
                 last_agent_actions.append(agent_actions_tmp)
 
-            actions = [actions]
-            next_obs, rewards, dones, infos = env.step(actions)
+            # agent_names = base_env.agents
+            actions_dict = {agent_name: agent_action
+                            for agent_name, agent_action in zip(base_env.agents, agent_actions_tmp)}
+            
+            next_obs, rewards, dones, infos = env.step(actions_dict)
+
 
             for a_i, agent_obs in enumerate(next_obs[0]):
                 for _ in range(len(last_agent_actions)):
