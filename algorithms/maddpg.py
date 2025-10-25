@@ -307,12 +307,12 @@ class MADDPG(object):
 
         for acsp, obsp, algtype in zip(action_spaces, observation_spaces, alg_types):
             # Determine action type and output dimension
-            if isinstance(acsp, Box):
-                discrete_action = False
-                num_out_pol = acsp.shape[0]  # Box: continuous action space
-            else:  # Discrete
+            if isinstance(acsp, Discrete):
+                num_out_pol = acsp.n
                 discrete_action = True
-                num_out_pol = acsp.n      # Discrete: number of actions
+            else isinstance(acsp, Box):
+                num_out_pol = acsp.shape[0]
+                discrete_action = False
 
             # Policy input includes observation + delayed actions
             num_in_pol = obsp.shape[0] + delay_step * num_out_pol
