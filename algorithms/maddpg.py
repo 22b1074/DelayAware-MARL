@@ -309,10 +309,12 @@ class MADDPG(object):
             # Determine action type and output dimension
             if isinstance(acsp, Box):
                 discrete_action = False
-                num_out_pol = acsp.shape[0]  # Box: continuous action space
-            else:  # Discrete
+                num_out_pol = acsp.shape[0]
+            elif isinstance(acsp, Discrete):
                 discrete_action = True
-                num_out_pol = acsp.n      # Discrete: number of actions
+                num_out_pol = acsp.n
+            else:
+                raise ValueError(f"Unsupported action space type {type(acsp)}")     # Discrete: number of actions
 
             # Policy input includes observation + delayed actions
             num_in_pol = obsp.shape[0] + delay_step * num_out_pol
