@@ -65,11 +65,24 @@ class SubprocVecEnv(VecEnv):
             remote.send(('step', action))
         self.waiting = True
 
-    def step_wait(self):
+    def step_wait_old(self):
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False
         obs, rews, dones, infos = zip(*results)
         return np.stack(obs), np.stack(rews), np.stack(dones), infos
+    def step_wait(self):
+        results = []
+        for a, env in zip(self.actions, self.envs):
+            obs_dict, rew_dict, done_dict, info_dict = env.step(a)  # unpack here
+            # convert dicts to arrays in consistent order
+            obs = np.array([obs_dict[agent] for agent in env.agents], dtype=np.float32)
+            rewards = np.array([rew_dict[agent] for agent in env.agents], dtype=np.float32)
+            dones = np.array([done_dict[agent] for agent in env.agents], dtype=np.bool_)
+            infos = info_dict  # keep as dict
+            results.append((obs, rewards, dones, infos))
+        obs, rews, dones, infos = map(np.array, zip(*results))
+        return obs, rews, dones, infos
+
 
     def reset(self):
         for remote in self.remotes:
