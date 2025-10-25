@@ -197,8 +197,18 @@ def run(config):
                 # Convert dict to ordered list
                
                 act_list = [actions_dict[a] for a in sorted(actions_dict.keys())]
-                print(f"Env Step Input: {[act_list]}")
-                next_obs, rewards, dones, infos = env.step(act_list)
+                # Get proper mapping for agent names
+                agents = env.envs[0].agents if hasattr(env, "envs") else env.agents
+                
+                # Convert list to dict if necessary
+                if isinstance(act_list, list):
+                    act_dict = {agent: act for agent, act in zip(agents, act_list[0])}
+                else:
+                    act_dict = act_list
+                
+                next_obs, rewards, dones, infos = env.step(act_dict)
+                print(f"Env Step Input: {[act_list]} and {act_list} and {act_dict}")
+
             else:
                 # PettingZoo parallel env accepts dict directly
                 print(f"Env Step Input: {[actions_dict]}")
