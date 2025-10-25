@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from gymnasium.spaces import Discrete, Box, Dict, Tuple
+from gym.spaces import Box, Discrete
 from utils.networks import MLPNetwork
 from utils.misc import soft_update, average_gradients, onehot_from_logits, gumbel_softmax
 from utils.agents import DDPGAgent
@@ -296,8 +296,6 @@ class MADDPG(object):
         single_env = env.envs[0]
         agents = single_env.agents  # list of agent names
         n_agents = len(agents)
-        for a in agents:
-            print(a, type(single_env.action_space(a)), single_env.action_space(a))
 
         #alg_types = [agent_alg] * n_agents
         alg_types = [adversary_alg if atype == 'adversary' else agent_alg for
@@ -309,27 +307,12 @@ class MADDPG(object):
 
         for acsp, obsp, algtype in zip(action_spaces, observation_spaces, alg_types):
             # Determine action type and output dimension
-            if isinstance(acsp, Discrete):
-                num_out_pol = acsp.n
+            if isinstance(acsp, Box):
+                discrete_action = False
+                num_out_pol = acsp.shape[0]  # Box: continuous action space
+            else:  # Discrete
                 discrete_action = True
-            elif isinstance(acsp, Box):
-                num_out_pol = acsp.shape[0]
-                discrete_action = False
-            elif isinstance(acsp, Dict):
-                # Example: use only the first Box action inside the Dict
-                # Adjust according to your environment
-                first_key = list(acsp.spaces.keys())[0]
-                acsp = acsp.spaces[first_key]
-                num_out_pol = acsp.shape[0]
-                discrete_action = False
-            elif isinstance(acsp, Tuple):
-                # Example: use first element if it's Box
-                acsp = acsp.spaces[0]
-                num_out_pol = acsp.shape[0]
-                discrete_action = False
-            else:
-                raise NotImplementedError(f"Unknown action space type: {type(acsp)}")
-
+                num_out_pol = acsp.n      # Discrete: number of actions
 
             # Policy input includes observation + delayed actions
             num_in_pol = obsp.shape[0] + delay_step * num_out_pol
