@@ -310,9 +310,12 @@ class MADDPG(object):
             if isinstance(acsp, Discrete):
                 num_out_pol = acsp.n
                 discrete_action = True
-            else isinstance(acsp, Box):
+            elif isinstance(acsp, Box):
                 num_out_pol = acsp.shape[0]
                 discrete_action = False
+            else:
+                raise NotImplementedError("Unknown action space type")
+
 
             # Policy input includes observation + delayed actions
             num_in_pol = obsp.shape[0] + delay_step * num_out_pol
