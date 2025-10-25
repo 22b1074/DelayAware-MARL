@@ -103,8 +103,11 @@ def run(config):
         print("Episodes %i-%i of %i" % (ep_i + 1,
                                         ep_i + 1 + config.n_rollout_threads,
                                         config.n_episodes))
-        obs = env.reset()
-        print(f"[DEBUG] Raw OBS from env.reset(): {obs}")
+        obs_dict = env.reset()
+        agents = list(obs_dict.keys())
+        obs = np.array([obs_dict[a] for a in agents], dtype=object).reshape(1, -1)
+        print(f"[DEBUG] Normalized OBS array: {obs.shape}")
+
         maddpg.prep_rollouts(device='cpu')
 
         explr_pct_remaining = max(0, config.n_exploration_eps - ep_i) / config.n_exploration_eps
