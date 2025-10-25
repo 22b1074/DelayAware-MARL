@@ -1,3 +1,4 @@
+import supersuit as ss
 def make_env(scenario_name, discrete_action=False):
     from pettingzoo.mpe.simple_speaker_listener_v4 import parallel_env as ssl_env
     from pettingzoo.mpe.simple_spread_v3 import parallel_env as ss_env
@@ -16,5 +17,5 @@ def make_env(scenario_name, discrete_action=False):
         max_cycles=25,
         continuous_actions=not discrete_action
     )
-
+    env = ss.pettingzoo_env_to_vec_env_v1(env)
     return env
