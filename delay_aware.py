@@ -176,13 +176,16 @@ def run(config):
                 last_agent_actions.append(agent_actions_tmp)
 
             # agent_names = base_env.agents
-            actions_dict = {agent_name: agent_action
-                            for agent_name, agent_action in zip(base_env.agents, agent_actions_tmp)}
             print(type(env))
             print(type(base_env))
-            print(f"Env Step: {env.step([actions_dict])}")
+            actions_dict = {
+                agent_name: agent_action
+                for agent_name, agent_action in zip(base_env.agents, agent_actions_tmp)
+            }
+            
+            print(f"Env Step Input: {[actions_dict]}")
             next_obs, rewards, dones, infos = env.step([actions_dict])
-
+            print(f"Env Step Output: {next_obs, rewards, dones, infos}")
 
             for a_i, agent_obs in enumerate(next_obs[0]):
                 for _ in range(len(last_agent_actions)):
