@@ -191,8 +191,19 @@ def run(config):
                 for agent_name, agent_action in zip(base_env.agents, agent_actions_tmp)
             }
             
-            print(f"Env Step Input: {[actions_dict]}")
-            next_obs, rewards, dones, infos = env.step(actions_dict)
+           
+            # Handle both PettingZoo dict-env and DummyVecEnv (list-based) cases
+            if isinstance(env, DummyVecEnv):
+                # Convert dict to ordered list
+               
+                act_list = [actions_dict[a] for a in sorted(actions_dict.keys())]
+                print(f"Env Step Input: {[act_list]}")
+                next_obs, rewards, dones, infos = env.step(act_list)
+            else:
+                # PettingZoo parallel env accepts dict directly
+                print(f"Env Step Input: {[actions_dict]}")
+                next_obs, rewards, dones, infos = env.step(actions_dict)
+
             print(f"Env Step Output: {next_obs, rewards, dones, infos}")
 
             for a_i, agent_obs in enumerate(next_obs[0]):
