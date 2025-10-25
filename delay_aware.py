@@ -112,7 +112,7 @@ def run(config):
             obs = obs_dict
             agents = list(range(obs.shape[1])) if obs.ndim > 1 else [0]
 
-print(f"[DEBUG] Normalized OBS array: {obs.shape}")
+        print(f"[DEBUG] Normalized OBS array: {obs.shape}")
         maddpg.prep_rollouts(device='cpu')
 
         explr_pct_remaining = max(0, config.n_exploration_eps - ep_i) / config.n_exploration_eps
