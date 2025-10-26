@@ -238,16 +238,27 @@ def run(config):
             
             # Ensure each agent's action matches replay buffer shape
             # Build buffer push list that is (num_agents, 1, agent_action_dim)
+            # Assume actions_dict is a dict: {agent_name: action for each agent}
+            ac_dims = [
+                base_env.action_space(agent).n if isinstance(base_env.action_space(agent), Discrete)
+                else int(np.prod(base_env.action_space(agent).shape))
+                for agent in base_env.agents
+            ]
+            
             actions_buffered = []
-            for agent in base_env.agents:  # This is your agent ordering
+            for agent, adim in zip(base_env.agents, ac_dims):
                 ac = np.array(actions_dict[agent], dtype=np.float32)
+                # Always reshape to (1, action_dim)
                 if ac.ndim == 1:
                     ac = ac.reshape(1, -1)
+                # Pad or clip to correct shape if necessary
+                if ac.shape[1] < adim:
+                    pad = np.zeros((1, adim), dtype=ac.dtype)
+                    pad[0, :ac.shape[1]] = ac
+                    ac = pad
+                elif ac.shape[1] > adim:
+                    ac = ac[:, :adim]
                 actions_buffered.append(ac)
-            
-            print("Action shapes by agent for buffer push:")
-            for idx, agent in enumerate(base_env.agents):
-                print(f"  {agent}: expected {replay_buffer.ac_buffs[idx].shape[1]}, got {actions_buffered[idx].shape}")
             
             replay_buffer.push(obs, actions_buffered, rewards, next_obs, dones)
 
