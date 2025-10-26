@@ -201,9 +201,10 @@ def run(config):
             else:
                 #agent_actions_tmp = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)][0]
                 agent_actions_tmp = [
-                    pad_or_clip_action(ac, base_env.action_space(agent))
-                    for ac, agent in zip(agent_actions, base_env.agents)
+                    pad_or_clip_action(ac.data.numpy().flatten(), base_env.action_space(agent))
+                    for ac, agent in zip(torch_agent_actions, base_env.agents)
                 ]
+
                 for idx, (agent, ac) in enumerate(zip(base_env.agents, agent_actions_tmp)):
                     print(f"[DEBUG] Agent TMP {agent} action shape: {ac.shape}, values: {ac}")
 
@@ -219,7 +220,9 @@ def run(config):
                 agent_name: agent_action
                 for agent_name, agent_action in zip(base_env.agents, agent_actions_tmp)
             }
-            
+            for agent_name, agent_action in actions_dict.items():
+                print(f"[DEBUG] {agent_name} flattened action shape: {agent_action.shape}, values: {agent_action}")
+
             print(f"Env Step Input: {[actions_dict]}")
             next_obs, rewards, dones, infos = env.step([actions_dict])
             print(f"Env Step Output: {next_obs, rewards, dones, infos}")
