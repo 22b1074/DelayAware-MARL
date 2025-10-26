@@ -176,6 +176,18 @@ def run(config):
                          for i in range(maddpg.nagents)]
             torch_agent_actions = maddpg.step(torch_obs, explore=True)
             agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
+            for a_i, ac in enumerate(agent_actions):
+                act_space = base_env.action_space(agents[a_i])
+                expected_size = act_space.n if hasattr(act_space, 'n') else int(np.prod(act_space.shape))
+                ac = np.array(ac, dtype=np.float32)
+                if ac.size < expected_size:
+                    padded = np.zeros(expected_size, dtype=np.float32)
+                    padded[:ac.size] = ac
+                    agent_actions[a_i] = padded
+                elif ac.size > expected_size:
+                    agent_actions[a_i] = ac[:expected_size]
+                if isinstance(act_space, Box):
+                    agent_actions[a_i] = np.clip(agent_actions[a_i], act_space.low, act_space.high)
 
             if delay_step == 0:
                 actions = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)]
