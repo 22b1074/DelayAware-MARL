@@ -290,24 +290,48 @@ def run(config):
 
             print("===============================================")
             # In 'run' just before replay_buffer.push
-            rewards = np.array(rewards)
-            obs = np.array(obs)
+            rewards_np = np.array(rewards)
+            obs_envs = []
+            for env_idx in range(num_envs):
+                env_agent_obs = []
+                for a_i in range(nagents):
+                    raw = obs[env_idx][a_i]
+                    env_agent_obs.append(np.array(raw, dtype=np.float32))
+                obs_envs.append(np.stack(env_agent_obs))
+            obs_np = np.stack(obs_envs)
             # next_obs is List[envs] of List[agents] of np.ndarray(obs_dim)
-            agent_next_obs = [[] for _ in base_env.agents]  # one list per agent
-            for env_obs in next_obs:  # iterate over environments (usually 1 here)
-                for i, agent_obs in enumerate(env_obs):
-                    agent_next_obs[i].append(agent_obs)
+            next_obs_envs = []
+            for env_obs in next_obs:  # iterate over envs
+                env_agent_obs = []
+                for a_i in range(nagents):
+                    env_agent_obs.append(np.array(env_obs[a_i], dtype=np.float32))
+                next_obs_envs.append(np.stack(env_agent_obs))
+            next_obs_np = np.stack(next_obs_envs)
+
+            actions_per_agent = []
+            for ac in actions_buffered:
+                ac = np.array(ac, dtype=np.float32)  # expected shape (num_envs, adim) or (1, adim)
+                if ac.shape[0] != num_envs:
+                    # replicate if only single env present
+                    ac = np.tile(ac.reshape(1, -1), (num_envs, 1))
+                actions_per_agent.append(ac)  # list of arrays, each (num_envs, adim)
+            # Stack agents along axis=1 -> (num_envs, nagents, adim)
+            actions_np = np.stack(actions_per_agent, axis=1)
             
-            # Stack per agent to make np.arrays of shape (num_envs, obs_dim)
-            next_obs_stacked = [np.stack(obs_list) for obs_list in agent_next_obs]
+            dones_np = np.array(dones)
+            
 
-            dones = np.array(dones)
+            print("DEBUG before push - obs_np.shape:", obs_np.shape,
+                  "actions_np.shape:", actions_np.shape,
+                  "next_obs_np.shape:", next_obs_np.shape,
+                  "rewards.shape:", rewards_np.shape,
+                  "dones.shape:", dones_np.shape)
 
-            replay_buffer.push(obs, actions_buffered, rewards, next_obs_stacked, dones)
-
+            # Now push arrays with numeric indexing support into the replay buffer
+            replay_buffer.push(obs_np, actions_np, rewards_np, next_obs_np, dones_np)
             #replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
 
-            obs = next_obs
+            obs = next_obs_np
             t += config.n_rollout_threads
 
             if (len(replay_buffer) >= config.batch_size and
