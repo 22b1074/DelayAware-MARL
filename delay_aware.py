@@ -182,8 +182,9 @@ def run(config):
                 actions = last_agent_actions[0]
                 last_agent_actions = last_agent_actions[1:]
                 last_agent_actions.append(agent_actions_tmp)
-
-            # agent_names = base_env.agents
+            
+           
+             # agent_names = base_env.agents
             print(type(env))
             print(type(base_env))
             actions_dict = {
@@ -191,29 +192,8 @@ def run(config):
                 for agent_name, agent_action in zip(base_env.agents, agent_actions_tmp)
             }
             
-           
-            # Handle both PettingZoo dict-env and DummyVecEnv (list-based) cases
-            if isinstance(env, DummyVecEnv):
-                # Convert dict to ordered list
-               
-                act_list = [actions_dict[a] for a in sorted(actions_dict.keys())]
-                # Get proper mapping for agent names
-                agents = env.envs[0].agents if hasattr(env, "envs") else env.agents
-                
-                # Convert list to dict if necessary
-                if isinstance(act_list, list):
-                    act_dict = {agent: act for agent, act in zip(agents, act_list[0])}
-                else:
-                    act_dict = act_list
-                
-                next_obs, rewards, dones, infos = env.step(act_dict)
-                print(f"Env Step Input: {[act_list]} and {act_list} and {act_dict}")
-
-            else:
-                # PettingZoo parallel env accepts dict directly
-                print(f"Env Step Input: {[actions_dict]}")
-                next_obs, rewards, dones, infos = env.step(actions_dict)
-
+            print(f"Env Step Input: {[actions_dict]}")
+            next_obs, rewards, dones, infos = env.step([actions_dict])
             print(f"Env Step Output: {next_obs, rewards, dones, infos}")
 
             for a_i, agent_obs in enumerate(next_obs[0]):
