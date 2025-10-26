@@ -262,7 +262,18 @@ def run(config):
                 elif ac.shape[1] > adim:
                     ac = ac[:, :adim]
                 actions_buffered.append(ac)
-            
+            print("=== Debug: Actor buffer push shapes and values ===")
+            for idx, (agent, ac) in enumerate(zip(base_env.agents, actions_buffered)):
+                print(f"Agent {agent} (index {idx}):")
+                print(f"  Expected action dim: {ac_dims[idx]}")
+                print(f"  Action shape: {ac.shape}")
+                print(f"  Action sample values: {ac.flatten()[:10]}")  # print first 10 elements
+            print(f"Observation shape: {obs.shape if hasattr(obs, 'shape') else 'N/A'}")
+            print(f"Reward shape: {np.array(rewards).shape if hasattr(rewards, '__len__') else 'N/A'}")
+            print(f"Next obs shape: {np.array(next_obs).shape if hasattr(next_obs, '__len__') else 'N/A'}")
+            print(f"Dones shape: {np.array(dones).shape if hasattr(dones, '__len__') else 'N/A'}")
+            print("===============================================")
+
             replay_buffer.push(obs, actions_buffered, rewards, next_obs, dones)
 
             #replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
