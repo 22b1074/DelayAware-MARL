@@ -123,23 +123,40 @@ class DummyVecEnv(VecEnv):
     def step_async(self, actions):
         self.actions = actions
 
-    def step_wait(self):
+   def step_wait(self):
         results = []
         for a, env in zip(self.actions, self.envs):
+            # Step the underlying env
             step_result = env.step(a)
-            if isinstance(step_result, (list, tuple)) and len(step_result) == 1:
-                step_result = step_result[0]
     
-            obs_dict, rew_dict, done_dict, info_dict = step_result
+            # Handle both 5-value (newer PettingZoo) or 4-value (older) outputs
+            if isinstance(step_result, (list, tuple)):
+                if len(step_result) == 5:
+                    # unpack 5 values
+                    obs_dict, rewards, terminations, truncations, infos = step_result
+                    # merge terminations and truncations into single 'done'
+                    done_dict = {agent: terminations[agent] or truncations[agent] for agent in env.agents}
+                elif len(step_result) == 4:
+                    obs_dict, rewards, done_dict, infos = step_result
+                else:
+                    raise ValueError(f"Unexpected number of values returned from env.step(): {len(step_result)}")
+            else:
+                raise ValueError("Env.step() returned something unexpected")
+    
+            # convert dicts to arrays per agent
             obs = np.array([obs_dict[agent] for agent in env.agents], dtype=np.float32)
-            rewards = np.array([rew_dict[agent] for agent in env.agents], dtype=np.float32)
+            rewards = np.array([rewards[agent] for agent in env.agents], dtype=np.float32)
             dones = np.array([done_dict[agent] for agent in env.agents], dtype=np.bool_)
-            infos = info_dict
+            infos = info_dict = info_dict  # keep as is
+    
             results.append((obs, rewards, dones, infos))
     
+        # stack results from all envs
         obs_batch, rew_batch, done_batch, infos_batch = map(np.array, zip(*results))
         self.actions = None
         return obs_batch, rew_batch, done_batch, infos_batch
+
+    
 
 
 
