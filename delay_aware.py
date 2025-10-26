@@ -99,15 +99,18 @@ def run(config):
         
         obs_size += delay_step * act_size
         obs_sizes.append(obs_size)
+    ac_dims = [
+        base_env.action_space(agent).n if isinstance(base_env.action_space(agent), Discrete)
+        else int(np.prod(base_env.action_space(agent).shape))
+        for agent in base_env.agents
+    ]
+
     
     replay_buffer = ReplayBuffer(
         config.buffer_length,
         maddpg.nagents,
         obs_sizes,
-        [
-            act_space.n if hasattr(act_space, 'n') else int(np.prod(act_space.shape))
-            for agent in base_env.agents
-        ]
+        ac_dims
     )
 
 
