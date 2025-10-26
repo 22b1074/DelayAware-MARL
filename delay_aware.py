@@ -291,6 +291,8 @@ def run(config):
             print("===============================================")
             # In 'run' just before replay_buffer.push
             rewards_np = np.array(rewards)
+            num_envs = config.n_rollout_threads
+            nagents = len(base_env.agents)
             obs_envs = []
             for env_idx in range(num_envs):
                 env_agent_obs = []
