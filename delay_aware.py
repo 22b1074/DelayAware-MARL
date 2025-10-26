@@ -32,6 +32,18 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
         return DummyVecEnv([get_env_fn(0)])
     else:
         return SubprocVecEnv([get_env_fn(i) for i in range(n_rollout_threads)])
+def pad_or_clip_action(ac, act_space):
+    expected_size = act_space.n if hasattr(act_space, 'n') else int(np.prod(act_space.shape))
+    ac = np.array(ac, dtype=np.float32)
+    if ac.size < expected_size:
+        padded = np.zeros(expected_size, dtype=np.float32)
+        padded[:ac.size] = ac
+        ac = padded
+    elif ac.size > expected_size:
+        ac = ac[:expected_size]
+    if isinstance(act_space, Box):
+        ac = np.clip(ac, act_space.low, act_space.high)
+    return ac
 
 
 def run(config):
@@ -211,15 +223,14 @@ def run(config):
             print(f"Env Step Output: {next_obs, rewards, dones, infos}")
 
             for a_i, agent_obs in enumerate(next_obs[0]):
-                for _ in range(len(last_agent_actions)):
-                    if a_i == 2:
-                        next_obs[0][a_i] = np.append(agent_obs, 4 * last_agent_actions[_][a_i])
-                    else:
-                        next_obs[0][a_i] = np.append(agent_obs, 3 * last_agent_actions[_][a_i])
+                for d in range(delay_step):
+                    agent_obs = np.append(agent_obs, last_agent_actions[d][a_i])
+                next_obs[0][a_i] = agent_obs
 
-            agent_actions[0] = agent_actions[0] * 3
-            agent_actions[1] = agent_actions[1] * 3
-            agent_actions.append(agent_actions[1] * 4)
+
+            agent_actions = [pad_or_clip_action(ac, base_env.action_space(agent))
+                 for ac, agent in zip(agent_actions, base_env.agents)]
+
             print("Action shapes by agent:")
             for idx, agent in enumerate(base_env.agents):
                 print(f"  {agent}: expected {replay_buffer.ac_buffs[idx].shape[1]}, got {agent_actions[idx].shape}")
