@@ -314,7 +314,12 @@ def run(config):
                     ac = np.tile(ac.reshape(1, -1), (num_envs, 1))
                 actions_per_agent.append(ac)  # list of arrays, each (num_envs, adim)
             # Stack agents along axis=1 -> (num_envs, nagents, adim)
-            actions_np = np.stack(actions_per_agent, axis=1)
+            if len(set([a.shape[-1] for a in actions_per_agent])) == 1:
+                actions_np = np.stack(actions_per_agent, axis=1)
+            else:
+                # keep list form since each agent has diff action dim
+                actions_np = actions_per_agent
+
             
             dones_np = np.array(dones)
             
