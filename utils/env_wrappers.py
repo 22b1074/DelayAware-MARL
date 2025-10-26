@@ -126,35 +126,26 @@ class DummyVecEnv(VecEnv):
     def step_wait(self):
         results = []
         for a, env in zip(self.actions, self.envs):
-            # Step the underlying env
             step_result = env.step(a)
     
-            # Handle both 5-value (newer PettingZoo) or 4-value (older) outputs
-            if isinstance(step_result, (list, tuple)):
-                if len(step_result) == 5:
-                    # unpack 5 values
-                    obs_dict, rewards, terminations, truncations, infos = step_result
-                    # merge terminations and truncations into single 'done'
-                    done_dict = {agent: terminations[agent] or truncations[agent] for agent in env.agents}
-                elif len(step_result) == 4:
-                    obs_dict, rewards, done_dict, infos = step_result
-                else:
-                    raise ValueError(f"Unexpected number of values returned from env.step(): {len(step_result)}")
+            # handle 5 or 4 return values
+            if len(step_result) == 5:
+                obs_dict, rew_dict, terminations, truncations, infos = step_result
+                done_dict = {agent: terminations[agent] or truncations[agent] for agent in env.agents}
             else:
-                raise ValueError("Env.step() returned something unexpected")
+                obs_dict, rew_dict, done_dict, infos = step_result
     
-            # convert dicts to arrays per agent
-            obs = np.array([obs_dict[agent] for agent in env.agents], dtype=np.float32)
-            rewards = np.array([rewards[agent] for agent in env.agents], dtype=np.float32)
-            dones = np.array([done_dict[agent] for agent in env.agents], dtype=np.bool_)
-            infos = info_dict = info_dict  # keep as is
+            # Keep obs as list to avoid ragged np.array error
+            obs = [obs_dict[agent] for agent in env.agents]
+            rewards = [rew_dict[agent] for agent in env.agents]
+            dones = [done_dict[agent] for agent in env.agents]
     
             results.append((obs, rewards, dones, infos))
     
-        # stack results from all envs
-        obs_batch, rew_batch, done_batch, infos_batch = map(np.array, zip(*results))
+        obs_batch, rew_batch, done_batch, infos_batch = zip(*results)
         self.actions = None
-        return obs_batch, rew_batch, done_batch, infos_batch
+        return list(obs_batch), list(rew_batch), list(done_batch), list(infos_batch)
+
 
     def reset(self):        
         results = [env.reset() for env in self.envs]
