@@ -205,7 +205,7 @@ def run(config):
 
             agent_actions[0] = agent_actions[0] * 3
             agent_actions[1] = agent_actions[1] * 3
-            agent_actions[2] = agent_actions[1] * 4
+            agent_actions.append(agent_actions[1] * 4)
 
             replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
 
