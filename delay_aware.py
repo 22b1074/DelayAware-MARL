@@ -272,6 +272,22 @@ def run(config):
             print(f"Reward shape: {np.array(rewards).shape if hasattr(rewards, '__len__') else 'N/A'}")
             #print(f"Next obs shape: {np.array(next_obs).shape if hasattr(next_obs, '__len__') else 'N/A'}")
             print(f"Dones shape: {np.array(dones).shape if hasattr(dones, '__len__') else 'N/A'}")
+            # Inspect structure of next_obs
+            print("Type of next_obs:", type(next_obs))
+            if isinstance(next_obs, (list, tuple)):
+                print(f"Number of elements in next_obs: {len(next_obs)}")
+                for i, env_obs in enumerate(next_obs):
+                    print(f"  Element {i}: type={type(env_obs)}")
+                    if hasattr(env_obs, '__len__'):
+                        print(f"  Element {i} length: {len(env_obs)}")
+                    if isinstance(env_obs, list):
+                        for j, agent_obs in enumerate(env_obs):
+                            print(f"    Agent {j}: type={type(agent_obs)}, shape={getattr(agent_obs, 'shape', None)}")
+                            if isinstance(agent_obs, np.ndarray):
+                                print(f"      shape={agent_obs.shape}")
+            else:
+                print("next_obs is not list or tuple, type:", type(next_obs))
+
             print("===============================================")
             # In 'run' just before replay_buffer.push
             rewards = np.array(rewards)
