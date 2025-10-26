@@ -201,6 +201,9 @@ def run(config):
                     pad_or_clip_action(ac, base_env.action_space(agent))
                     for ac, agent in zip(agent_actions, base_env.agents)
                 ]
+                for idx, (agent, ac) in enumerate(zip(base_env.agents, agent_actions_tmp)):
+                    print(f"[DEBUG] Agent {agent} action shape: {ac.shape}, values: {ac}")
+
                 actions = last_agent_actions[0]
                 last_agent_actions = last_agent_actions[1:]
                 last_agent_actions.append(agent_actions_tmp)
