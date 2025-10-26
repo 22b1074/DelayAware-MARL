@@ -273,6 +273,11 @@ def run(config):
             #print(f"Next obs shape: {np.array(next_obs).shape if hasattr(next_obs, '__len__') else 'N/A'}")
             print(f"Dones shape: {np.array(dones).shape if hasattr(dones, '__len__') else 'N/A'}")
             print("===============================================")
+            # In 'run' just before replay_buffer.push
+            rewards = np.array(rewards)
+            obs = np.array(obs)
+            next_obs = np.array(next_obs)
+            dones = np.array(dones)
 
             replay_buffer.push(obs, actions_buffered, rewards, next_obs, dones)
 
