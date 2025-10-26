@@ -233,12 +233,9 @@ def run(config):
                 next_obs[0][a_i] = agent_obs
 
 
-            agent_actions = [pad_or_clip_action(ac, base_env.action_space(agent))
-                 for ac, agent in zip(agent_actions, base_env.agents)]
+            
 
-            print("Action shapes by agent:")
-            for idx, agent in enumerate(base_env.agents):
-                print(f"  {agent}: expected {replay_buffer.ac_buffs[idx].shape[1]}, got {agent_actions[idx].shape}")
+            
             # Ensure each agent's action matches replay buffer shape
             agent_actions_buffered = []
             for a_i, (ac, agent) in enumerate(zip(agent_actions, base_env.agents)):
@@ -252,6 +249,9 @@ def run(config):
                     ac = ac[:expected_size]
                 agent_actions_buffered.append(ac)
             # Use the shape-checked/padded versions for buffer push!
+            print("Action shapes by agent:")
+            for idx, agent in enumerate(base_env.agents):
+                print(f"  {agent}: expected {replay_buffer.ac_buffs[idx].shape[1]}, got {agent_actions_buffered[idx].shape}")
             replay_buffer.push(obs, agent_actions_buffered, rewards, next_obs, dones)
 
             #replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
