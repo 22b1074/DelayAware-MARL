@@ -136,27 +136,27 @@ def run(config):
         
 
         # obs: list of shape (n_rollout_threads, nagents), each obs[t][a_i] is np.ndarray
+        # inside your run() function, replace this part:
         for t in range(config.n_rollout_threads):
             for a_i in range(maddpg.nagents):
                 # If obs is empty dict (agent not active yet), replace with zeros
                 if isinstance(obs[t][a_i], dict):
-                    obs[t][a_i] = np.zeros(base_env.observation_space(base_env.agents[a_i]).shape[0], dtype=np.float32)
+                    obs[t][a_i] = np.zeros(
+                        base_env.observation_space(base_env.agents[a_i]).shape[0],
+                        dtype=np.float32
+                    )
                 else:
                     obs[t][a_i] = obs[t][a_i].astype(np.float32)
+        
                 print(f"Agent {a_i} obs shape BEFORE delay append: {obs[t][a_i].shape}")
-
-                # Append only this agent's delayed actions as one-hot
+        
+                # Append only this agent's delayed actions as raw values
                 for d in range(delay_step):
                     act = last_agent_actions[d][a_i]
-                    if maddpg.discrete_action:
-                        num_out_pol = maddpg.agent_init_params[a_i]['num_out_pol']
-                        one_hot_act = np.zeros(num_out_pol, dtype=np.float32)
-                        one_hot_act[int(act)] = 1.0
-                        obs[t][a_i] = np.append(obs[t][a_i], one_hot_act)
-                    else:
-                        obs[t][a_i] = np.append(obs[t][a_i], act.astype(np.float32))
-
+                    obs[t][a_i] = np.append(obs[t][a_i], act.astype(np.float32))
+        
                 print(f"Agent {a_i} obs shape after delay append: {obs[t][a_i].shape}")
+
 
 
 
