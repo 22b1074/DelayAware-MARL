@@ -300,8 +300,11 @@ def run(config):
                 env_agent_obs = []
                 for a_i in range(nagents):
                     env_agent_obs.append(np.array(env_obs[a_i], dtype=np.float32))
-                next_obs_envs.append(np.stack(env_agent_obs))
-            next_obs_np = np.stack(next_obs_envs)
+                # DO NOT stack agent arrays (they have different shapes). Keep list structure.
+                next_obs_envs.append(env_agent_obs)
+
+            # Create an object array of shape (num_envs, nagents) where each element is np.ndarray
+            next_obs_np = np.array(next_obs_envs, dtype=object)
 
             actions_per_agent = []
             for ac in actions_buffered:
