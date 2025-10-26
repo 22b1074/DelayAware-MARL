@@ -143,6 +143,7 @@ def run(config):
                     obs[t][a_i] = np.zeros(base_env.observation_space(base_env.agents[a_i]).shape[0], dtype=np.float32)
                 else:
                     obs[t][a_i] = obs[t][a_i].astype(np.float32)
+                print(f"Agent {a_i} obs shape BEFORE delay append: {obs[t][a_i].shape}")
 
                 # Append only this agent's delayed actions as one-hot
                 for d in range(delay_step):
