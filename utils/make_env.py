@@ -14,7 +14,7 @@ def make_env(scenario_name, discrete_action=False):
 
     env = scenario_dict[scenario_name](
         max_cycles=25,
-        continuous_actions=not discrete_action
+        continuous_actions=discrete_action
     )
 
     return env
