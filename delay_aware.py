@@ -292,10 +292,18 @@ def run(config):
             # In 'run' just before replay_buffer.push
             rewards = np.array(rewards)
             obs = np.array(obs)
-            next_obs = np.array(next_obs)
+            # next_obs is List[envs] of List[agents] of np.ndarray(obs_dim)
+            agent_next_obs = [[] for _ in base_env.agents]  # one list per agent
+            for env_obs in next_obs:  # iterate over environments (usually 1 here)
+                for i, agent_obs in enumerate(env_obs):
+                    agent_next_obs[i].append(agent_obs)
+            
+            # Stack per agent to make np.arrays of shape (num_envs, obs_dim)
+            next_obs_stacked = [np.stack(obs_list) for obs_list in agent_next_obs]
+
             dones = np.array(dones)
 
-            replay_buffer.push(obs, actions_buffered, rewards, next_obs, dones)
+            replay_buffer.push(obs, actions_buffered, rewards, next_obs_stacked, dones)
 
             #replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
 
