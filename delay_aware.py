@@ -203,7 +203,7 @@ def run(config):
             print(type(base_env))
             actions_dict = {
                 agent_name: agent_action
-                for agent_name, agent_action in zip(base_env.agents, agent_actions_tmp)
+                for agent_name, agent_action in zip(base_env.agents, agent_actions)
             }
             
             print(f"Env Step Input: {[actions_dict]}")
