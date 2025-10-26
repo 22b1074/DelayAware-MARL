@@ -196,7 +196,11 @@ def run(config):
             if delay_step == 0:
                 actions = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)]
             else:
-                agent_actions_tmp = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)][0]
+                #agent_actions_tmp = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)][0]
+                agent_actions_tmp = [
+                    pad_or_clip_action(ac, base_env.action_space(agent))
+                    for ac, agent in zip(agent_actions, base_env.agents)
+                ]
                 actions = last_agent_actions[0]
                 last_agent_actions = last_agent_actions[1:]
                 last_agent_actions.append(agent_actions_tmp)
