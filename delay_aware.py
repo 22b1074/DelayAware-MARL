@@ -270,7 +270,7 @@ def run(config):
                 print(f"  Action sample values: {ac.flatten()[:10]}")  # print first 10 elements
             print(f"Observation shape: {obs.shape if hasattr(obs, 'shape') else 'N/A'}")
             print(f"Reward shape: {np.array(rewards).shape if hasattr(rewards, '__len__') else 'N/A'}")
-            print(f"Next obs shape: {np.array(next_obs).shape if hasattr(next_obs, '__len__') else 'N/A'}")
+            #print(f"Next obs shape: {np.array(next_obs).shape if hasattr(next_obs, '__len__') else 'N/A'}")
             print(f"Dones shape: {np.array(dones).shape if hasattr(dones, '__len__') else 'N/A'}")
             print("===============================================")
 
