@@ -77,26 +77,27 @@ def run(config):
     print(f"Agents: {agents}, nagents: {nagents}")
     print(f"base_env: {base_env}")
     print("[DEBUG] Base env agents:", base_env.agents)
+    obs_sizes = []
     for agent in base_env.agents:
-        print(f"  {agent} obs_space:", base_env.observation_space(agent))
-        print(f"  {agent} act_space:", base_env.action_space(agent))
-    print("[DEBUG] delay_step:", delay_step)
+        obs_size = base_env.observation_space(agent).shape[0]
+        
+        # Add size of delayed actions
+        act_space = base_env.action_space(agent)
+        act_size = 1 if isinstance(act_space, Discrete) else int(np.prod(act_space.shape))
+        
+        obs_size += delay_step * act_size
+        obs_sizes.append(obs_size)
+    
+    replay_buffer = ReplayBuffer(
+        config.buffer_length,
+        maddpg.nagents,
+        obs_sizes,
+        [
+            act_space.n if hasattr(act_space, 'n') else int(np.prod(act_space.shape))
+            for agent in base_env.agents
+        ]
+    )
 
-
-    # ✅ Fixed action-space shape check (no AttributeError now)
-    replay_buffer = ReplayBuffer(config.buffer_length,
-                                 maddpg.nagents,
-                                 [
-                                    base_env.observation_space(agent).shape[0] + delay_step * 2
-                                    for agent in base_env.agents
-                                ],
-                                [
-    base_env.action_space(agent).n if hasattr(base_env.action_space(agent), 'n')
-    else int(np.prod(base_env.action_space(agent).shape))
-    for agent in base_env.agents
-]
-
-                                )
 
     t = 0
     for ep_i in range(0, config.n_episodes, config.n_rollout_threads):
