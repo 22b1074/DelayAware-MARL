@@ -220,6 +220,9 @@ def run(config):
             agent_actions[0] = agent_actions[0] * 3
             agent_actions[1] = agent_actions[1] * 3
             agent_actions.append(agent_actions[1] * 4)
+            print("Action shapes by agent:")
+            for idx, agent in enumerate(base_env.agents):
+                print(f"  {agent}: expected {replay_buffer.ac_buffs[idx].shape[1]}, got {agent_actions[idx].shape}")
 
             replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
 
