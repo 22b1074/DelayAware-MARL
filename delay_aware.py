@@ -325,10 +325,14 @@ def run(config):
             
 
             print("DEBUG before push - obs_np.shape:", obs_np.shape,
-                  "actions_np.shape:", actions_np.shape,
                   "next_obs_np.shape:", next_obs_np.shape,
                   "rewards.shape:", rewards_np.shape,
                   "dones.shape:", dones_np.shape)
+            if isinstance(actions_np, list):
+                shapes = [a.shape for a in actions_np]
+                print("actions_np is list with shapes:", shapes)
+            else:
+                print("actions_np.shape:", actions_np.shape)
 
             # Now push arrays with numeric indexing support into the replay buffer
             replay_buffer.push(obs_np, actions_np, rewards_np, next_obs_np, dones_np)
