@@ -293,14 +293,7 @@ def run(config):
             rewards_np = np.array(rewards)
             num_envs = config.n_rollout_threads
             nagents = len(base_env.agents)
-            obs_envs = []
-            for env_idx in range(num_envs):
-                env_agent_obs = []
-                for a_i in range(nagents):
-                    raw = obs[env_idx][a_i]
-                    env_agent_obs.append(np.array(raw, dtype=np.float32))
-                obs_envs.append(np.stack(env_agent_obs))
-            obs_np = np.stack(obs_envs)
+            obs_np = np.array(obs)
             # next_obs is List[envs] of List[agents] of np.ndarray(obs_dim)
             next_obs_envs = []
             for env_obs in next_obs:  # iterate over envs
